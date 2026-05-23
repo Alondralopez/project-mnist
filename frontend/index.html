@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Predicción MNIST – ITJiquilpan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Variables ───────────────────────────────── */
+    :root {
+      --azul:      #1a3a6b;
+      --azul-mid:  #1e4d94;
+      --azul-lt:   #2e6cc7;
+      --dorado:    #c8a000;
+      --dorado-lt: #f0cb3a;
+      --blanco:    #ffffff;
+      --gris-bg:   #f0f4fb;
+      --gris-bd:   #d0daf0;
+      --texto:     #1a2a45;
+      --texto-sec: #5a6a85;
+      --verde:     #1a7a4a;
+      --rojo:      #c0392b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      background: var(--gris-bg);
+      color: var(--texto);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ──────────────────────────────────── */
+    .header {
+      width: 100%;
+      border-bottom: 4px solid var(--dorado);
+      background: var(--azul);
+      line-height: 0;
+    }
+    .header-banner {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+    .header-fallback {
+      display: none;
+      padding: 18px 32px;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-fallback h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 30px;
+      font-weight: 900;
+      color: var(--blanco);
+    }
+    .header-fallback span {
+      font-size: 12px;
+      color: var(--dorado-lt);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ── TÍTULO ──────────────────────────────────── */
+    .title-section {
+      max-width: 900px;
+      margin: 36px auto 0;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .title-badge {
+      display: inline-block;
+      background: var(--azul);
+      color: var(--dorado-lt);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      padding: 5px 18px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .page-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--azul);
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--texto-sec);
+      font-style: italic;
+    }
+
+    /* ── MAIN CARD ───────────────────────────────── */
+    .main-content {
+      flex: 1;
+      max-width: 900px;
+      width: 100%;
+      margin: 32px auto 40px;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: var(--blanco);
+      border-radius: 20px;
+      border: 1px solid var(--gris-bd);
+      box-shadow: 0 8px 40px rgba(26,58,107,0.10);
+      padding: 40px;
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    /* ── PANEL IZQUIERDO: canvas ─────────────────── */
+    .draw-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      flex: 0 0 auto;
+    }
+
+    .draw-label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--texto-sec);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(26,58,107,0.18);
+      border: 3px solid var(--azul);
+      cursor: crosshair;
+    }
+
+    #drawCanvas {
+      display: block;
+      background: #000;
+      touch-action: none;
+    }
+
+    .canvas-hint {
+      font-size: 12px;
+      color: var(--texto-sec);
+      text-align: center;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+    }
+    .btn:hover   { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+    .btn:active  { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-predict {
+      background: var(--azul);
+      color: var(--blanco);
+      flex: 1;
+    }
+    .btn-clear {
+      background: var(--gris-bg);
+      color: var(--texto-sec);
+      border: 1.5px solid var(--gris-bd);
+    }
+
+    /* ── PANEL DERECHO: resultado ────────────────── */
+    .result-panel {
+      flex: 1;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Número grande */
+    .prediction-display {
+      border-radius: 16px;
+      border: 2px solid var(--gris-bd);
+      background: var(--gris-bg);
+      padding: 28px 20px;
+      text-align: center;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .prediction-display.success {
+      border-color: var(--verde);
+      background: #eaf6ef;
+    }
+    .prediction-display.error {
+      border-color: var(--rojo);
+      background: #fef0ef;
+    }
+    .prediction-display.loading {
+      border-color: var(--azul-lt);
+      background: #eef3fb;
+    }
+
+    .pred-icon { font-size: 36px; margin-bottom: 6px; }
+
+    .pred-number {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 96px;
+      font-weight: 900;
+      color: var(--azul);
+      line-height: 1;
+      transition: all 0.3s;
+    }
+
+    .pred-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--texto-sec);
+      margin-top: 6px;
+    }
+
+    /* Barra de confianza */
+    .confidence-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+    .conf-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--texto-sec);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .conf-bar-bg {
+      background: var(--gris-bd);
+      border-radius: 6px;
+      height: 12px;
+      overflow: hidden;
+    }
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--azul-lt), var(--azul));
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+    }
+
+    /* Mini barras por dígito */
+    .digit-bars { display: flex; flex-direction: column; gap: 5px; }
+    .digit-bar-row {
+      display: grid;
+      grid-template-columns: 18px 1fr 44px;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+    }
+    .digit-bar-row .d-label { color: var(--texto-sec); text-align: right; }
+    .digit-mini-bg { background: var(--gris-bd); border-radius: 3px; height: 6px; }
+    .digit-mini-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--gris-bd);
+      transition: width 0.5s ease, background 0.3s;
+      width: 0%;
+    }
+    .digit-mini-fill.active { background: linear-gradient(90deg, var(--azul-lt), var(--azul)); }
+    .digit-mini-fill.top    { background: linear-gradient(90deg, var(--dorado), #e09000); }
+    .d-pct { color: var(--texto-sec); font-size: 11px; }
+
+    /* Status */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 2px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gris-bd);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .status-dot.active { background: var(--azul-lt); animation: pulse 1s infinite; }
+    .status-dot.ok     { background: var(--verde); }
+    .status-dot.err    { background: var(--rojo); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    .status-text { font-size: 12px; color: var(--texto-sec); font-family: 'Montserrat', sans-serif; }
+
+    /* Preview 28×28 */
+    .preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--gris-bg);
+      border: 1px solid var(--gris-bd);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .preview-label { font-size: 11px; color: var(--texto-sec); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+    #previewCanvas { border-radius: 4px; image-rendering: pixelated; border: 1px solid var(--gris-bd); }
+
+    /* ── FOOTER ──────────────────────────────────── */
+    .footer {
+      background: var(--azul);
+      color: rgba(255,255,255,0.55);
+      text-align: center;
+      padding: 14px 24px;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .footer-sep { color: var(--dorado); }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 640px) {
+      .card { padding: 24px 16px; gap: 24px; }
+      .pred-number { font-size: 72px; }
+      #drawCanvas { width: 260px !important; height: 260px !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════ -->
+<header class="header">
+  <img
+    src="http://www.jiquilpan.tecnm.mx/Img/BannerSup/cover-simple-portal.jpg"
+    alt="Instituto Tecnológico de Jiquilpan – Banner institucional"
+    class="header-banner"
+    onerror="this.style.display='none'; document.getElementById('hfallback').style.display='flex';"
+  />
+  <div class="header-fallback" id="hfallback">
+    <div>
+      <span>Instituto Tecnológico de</span>
+      <h1>Jiquilpan</h1>
+    </div>
+  </div>
+</header>
+
+<!-- ══ TÍTULO ══════════════════════════════════════ -->
+<section class="title-section">
+  <div class="title-badge">Inteligencia Artificial · Dataset MNIST</div>
+  <h2 class="page-title">Reconocimiento de Dígitos Manuscritos</h2>
+  <p class="page-subtitle">Dibuja un número del 0 al 9 y el modelo de IA lo identificará</p>
+</section>
+
+<!-- ══ MAIN ════════════════════════════════════════ -->
+<main class="main-content">
+  <div class="card">
+
+    <!-- Panel izquierdo: dibujo -->
+    <div class="draw-panel">
+      <span class="draw-label">✏️ Dibuja aquí</span>
+
+      <div class="canvas-wrap">
+        <canvas id="drawCanvas" width="280" height="280"></canvas>
+      </div>
+
+      <p class="canvas-hint">Usa el mouse o el dedo para dibujar</p>
+
+      <div class="btn-row">
+        <button class="btn btn-predict" id="btnPredict">🔍 Predecir</button>
+        <button class="btn btn-clear"   id="btnClear">🗑 Borrar</button>
+      </div>
+
+      <!-- Preview 28×28 que se enviará al modelo -->
+      <div class="preview-wrap">
+        <div>
+          <div class="preview-label">Vista previa 28×28</div>
+          <div style="font-size:11px;color:var(--texto-sec);margin-top:2px;">Así ve el modelo</div>
+        </div>
+        <canvas id="previewCanvas" width="56" height="56"></canvas>
+      </div>
+    </div>
+
+    <!-- Panel derecho: resultado -->
+    <div class="result-panel">
+
+      <!-- Número grande -->
+      <div class="prediction-display" id="predDisplay">
+        <div class="pred-icon" id="predIcon">🤖</div>
+        <div class="pred-number" id="predNumber">?</div>
+        <div class="pred-label" id="predLabel">Esperando dibujo…</div>
+      </div>
+
+      <!-- Barra de confianza principal -->
+      <div class="confidence-wrap">
+        <div class="conf-header">
+          <span>Confianza</span>
+          <span id="confPct">–</span>
+        </div>
+        <div class="conf-bar-bg">
+          <div class="conf-bar-fill" id="confBar"></div>
+        </div>
+      </div>
+
+      <!-- Mini barras por dígito -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--texto-sec);margin-bottom:8px;">Distribución de probabilidades</div>
+        <div class="digit-bars" id="digitBars"></div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Listo para predecir</span>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- ══ FOOTER ══════════════════════════════════════ -->
+<footer class="footer">
+  <span>Instituto Tecnológico de Jiquilpan &nbsp;·&nbsp; TECNM &nbsp;·&nbsp; Michoacán, México</span>
+  <span class="footer-sep">|</span>
+  <span>Modelo MNIST · FastAPI · TensorFlow/Keras</span>
+</footer>
+
+<script>
+/* ════════════════════════════════════════════════════
+   Configuración
+════════════════════════════════════════════════════ */
+const API_URL = 'https://mnist-api-3vv5.onrender.com/predict';
+
+/* ════════════════════════════════════════════════════
+   Canvas – Dibujo
+════════════════════════════════════════════════════ */
+const canvas  = document.getElementById('drawCanvas');
+const ctx     = canvas.getContext('2d');
+const preview = document.getElementById('previewCanvas');
+const pctx    = preview.getContext('2d');
+
+let drawing = false;
+let hasDrawing = false;
+
+// Fondo negro al inicio
+ctx.fillStyle = '#000';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  const {x,y} = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+}
+
+function draw(e) {
+  e.preventDefault();
+  if (!drawing) return;
+  const {x,y} = getPos(e);
+  ctx.lineWidth   = 22;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  hasDrawing = true;
+  updatePreview();
+}
+
+function stopDraw(e) {
+  e.preventDefault();
+  drawing = false;
+  ctx.beginPath();
+}
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  draw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, {passive:false});
+canvas.addEventListener('touchmove',  draw,      {passive:false});
+canvas.addEventListener('touchend',   stopDraw,  {passive:false});
+
+function updatePreview() {
+  pctx.clearRect(0, 0, 56, 56);
+  pctx.imageSmoothingEnabled = false;
+  pctx.drawImage(canvas, 0, 0, 56, 56);
+}
+
+/* ════════════════════════════════════════════════════
+   Limpiar canvas
+════════════════════════════════════════════════════ */
+document.getElementById('btnClear').addEventListener('click', () => {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  pctx.clearRect(0, 0, 56, 56);
+  hasDrawing = false;
+  resetUI();
+});
+
+/* ════════════════════════════════════════════════════
+   UI helpers
+════════════════════════════════════════════════════ */
+function setStatus(state, msg) {
+  document.getElementById('statusDot').className  = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = msg;
+}
+
+function resetUI() {
+  document.getElementById('predDisplay').className = 'prediction-display';
+  document.getElementById('predIcon').textContent   = '🤖';
+  document.getElementById('predNumber').textContent = '?';
+  document.getElementById('predLabel').textContent  = 'Esperando dibujo…';
+  document.getElementById('confBar').style.width    = '0%';
+  document.getElementById('confPct').textContent    = '–';
+  document.getElementById('digitBars').innerHTML    = '';
+  setStatus('', 'Listo para predecir');
+}
+
+function buildDigitBars(probs, topIdx) {
+  const container = document.getElementById('digitBars');
+  container.innerHTML = '';
+  probs.forEach((p, i) => {
+    const pct = (p * 100).toFixed(1);
+    const isTop = (i === topIdx);
+    const row = document.createElement('div');
+    row.className = 'digit-bar-row';
+    row.innerHTML = `
+      <span class="d-label">${i}</span>
+      <div class="digit-mini-bg">
+        <div class="digit-mini-fill ${isTop ? 'top' : 'active'}"
+             style="width:${pct}%"></div>
+      </div>
+      <span class="d-pct">${pct}%</span>`;
+    container.appendChild(row);
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   Canvas → Blob PNG
+════════════════════════════════════════════════════ */
+function canvasToBlob() {
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+/* ════════════════════════════════════════════════════
+   Predicción
+════════════════════════════════════════════════════ */
+document.getElementById('btnPredict').addEventListener('click', predict);
+
+async function predict() {
+  if (!hasDrawing) {
+    setStatus('err', 'Dibuja un número primero');
+    return;
+  }
+
+  const btn = document.getElementById('btnPredict');
+  btn.disabled = true;
+  setStatus('active', 'Enviando imagen al modelo…');
+  document.getElementById('predDisplay').className = 'prediction-display loading';
+  document.getElementById('predIcon').textContent  = '⏳';
+  document.getElementById('predNumber').textContent = '…';
+  document.getElementById('predLabel').textContent  = 'Procesando…';
+
+  try {
+    const blob = await canvasToBlob();
+    const form = new FormData();
+    form.append('file', blob, 'digito.png');
+
+    const res = await fetch(API_URL, { method: 'POST', body: form });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const clase = data.clase;
+    const prob  = data.probabilidad;
+
+    // ── Si la API devuelve todas las probabilidades úsalas,
+    //    si no, construimos un array aproximado
+    const probs = data.probabilidades
+      ? data.probabilidades
+      : Array.from({length:10}, (_,i) => i === parseInt(clase) ? prob : (1-prob)/9);
+
+    // Actualizar UI
+    document.getElementById('predDisplay').className = 'prediction-display success';
+    document.getElementById('predIcon').textContent   = confEmoji(prob);
+    document.getElementById('predNumber').textContent = clase;
+    document.getElementById('predLabel').textContent  =
+      `Confianza: ${(prob*100).toFixed(1)}%`;
+
+    document.getElementById('confBar').style.width = (prob*100).toFixed(1) + '%';
+    document.getElementById('confPct').textContent  = (prob*100).toFixed(1) + '%';
+
+    buildDigitBars(probs, parseInt(clase));
+    setStatus('ok', `Predicción completada · dígito: ${clase}`);
+
+  } catch(err) {
+    document.getElementById('predDisplay').className  = 'prediction-display error';
+    document.getElementById('predIcon').textContent   = '⚠️';
+    document.getElementById('predNumber').textContent = '!';
+    document.getElementById('predLabel').textContent  = err.message.substring(0,60);
+    setStatus('err', 'Error al conectar con la API');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function confEmoji(p) {
+  if (p >= 0.95) return '🎯';
+  if (p >= 0.80) return '✅';
+  if (p >= 0.60) return '🤔';
+  return '😕';
+}
+
+/* ════════════════════════════════════════════════════
+   Init digit bars vacías
+════════════════════════════════════════════════════ */
+(function initBars() {
+  const c = document.getElementById('digitBars');
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement('div');
+    row.className = 'digit-bar-row';
+    row.innerHTML = `
+      <span class="d-label">${i}</span>
+      <div class="digit-mini-bg"><div class="digit-mini-fill" style="width:0%"></div></div>
+      <span class="d-pct">0.0%</span>`;
+    c.appendChild(row);
+  }
+})();
+</script>
+</body>
+</html>
