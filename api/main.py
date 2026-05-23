@@ -26,7 +26,7 @@ app.add_middleware(
 # Cargar modelo UNA sola vez
 # -----------------------------------
 try:
-    modelo = tf.keras.models.load_model("model/modeloV3.keras")
+    modelo = tf.keras.models.load_model("api/model/modeloV3.keras")
     print("Modelo cargado correctamente")
 except Exception as e:
     raise RuntimeError(f"Error cargando el modelo: {e}")
